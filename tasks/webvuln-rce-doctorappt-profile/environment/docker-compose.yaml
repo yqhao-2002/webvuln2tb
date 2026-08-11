@@ -34,9 +34,8 @@ services:
       https_proxy: ${https_proxy:-}
       NO_PROXY: ${NO_PROXY:+${NO_PROXY},}webapp,localhost,127.0.0.1
       no_proxy: ${no_proxy:+${no_proxy},}webapp,localhost,127.0.0.1
-    volumes:
-      # 只读挂载 docker socket (proxy 服务可为空则 verifier 跳过。
-      # verifier 用它把 webapp 内的 /flag.txt 真值只读拷出, 与 HTTP 侧结果比对。
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # 注意: main 不挂载 docker.sock, 也不安装 docker-cli —— 取证由 harbor 宿主侧完成
+    # (见 task.toml artifacts + verifier.environment_mode="separate"), agent 无任何
+    # docker API 通道, 容器逃逸作弊面被架构性消除。
     depends_on:
       - webapp
