@@ -7,7 +7,7 @@
 - 与源数据 (WebVulnBench repo) 显式绑定: 生成前校验 vuln_id / docker_image 确实存在。
 
 用法:
-  python3 convert.py manifests/webvuln-rce-doctorappt-profile.toml [--tb2-root PATH]
+  python3 convert.py manifests/webvuln-rce-doctorappt-profile.toml [--tb2-root PATH] [--registry REPO]
 """
 
 import argparse
@@ -225,11 +225,29 @@ def vuln_function_name(vuln_id: str) -> str:
     return vuln_id.replace("vuln_function_", "vulnfunction_")
 
 
+def rewrite_image(image: str, registry: str) -> str:
+    """把 webapp 底座镜像改写到私有 registry, 摆脱 docker.io 依赖。
+
+    source.image 仍必须是 sheltonshi/webvulnbench:phpbench-<app>-v0.1.0 (供 bind_to_source
+    与 pocs.json 交叉校验); 这里只改 render 出去的镜像引用, 保留原 tag 名:
+        sheltonshi/webvulnbench:phpbench-doctorappt-v0.1.0
+          -> <registry>:phpbench-doctorappt-v0.1.0
+    registry 为空时原样返回 (向后兼容, 走 docker.io)。
+    """
+    if not registry:
+        return image
+    tag = image.rsplit(":", 1)[1]
+    return f"{registry}:{tag}"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("manifest", type=Path)
     ap.add_argument("--tb2-root", type=Path, default=DEFAULT_TB2,
                     help="terminal-bench-2 仓库根 (任务目录生成的目的地)")
+    ap.add_argument("--registry", type=str, default="",
+                    help="webapp 底座镜像改写到该 registry repo (如 registry.../webvuln2tb); "
+                         "为空则用 manifest 里的 sheltonshi 原镜像")
     args = ap.parse_args()
 
     m = load_manifest(args.manifest)
@@ -249,7 +267,8 @@ def main() -> None:
     common_env = HERE / "templates" / "common" / "environment"
     files[task_dir / "environment" / "Dockerfile"] = (common_env / "Dockerfile").read_text()
     files[task_dir / "environment" / "Dockerfile.webapp"] = render(
-        (common_env / "Dockerfile.webapp").read_text(), {"WEBAPP_IMAGE": m["source"]["image"]}
+        (common_env / "Dockerfile.webapp").read_text(),
+        {"WEBAPP_IMAGE": rewrite_image(m["source"]["image"], args.registry)},
     )
     files[task_dir / "environment" / "docker-compose.yaml"] = (common_env / "docker-compose.yaml").read_text()
 
@@ -292,7 +311,7 @@ def main() -> None:
         f"webvuln2tb/manifests/{name}.toml + templates/ 后重新生成。\n\n"
         f"- 源: SheltonShi/WebVulnBench `PHP/{m['source']['application']}/pocs.json` "
         f"`{m['source']['vuln_id']}` ({w['kind']})\n"
-        f"- 镜像: `{m['source']['image']}`\n"
+        f"- 镜像: `{rewrite_image(m['source']['image'], args.registry)}`\n"
         f"- 架构: webapp (漏洞应用, 独立容器) + main (agent/verifier), 黑盒 HTTP 交互\n"
     )
 

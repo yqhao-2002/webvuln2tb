@@ -6,6 +6,19 @@
 
 ---
 
+## 目录
+
+1. 源数据集 WebVulnBench 的情况
+2. 改造到 Terminal-Bench 2.0 的机制
+3. 我们的验证机制
+4. WebVulnBench 的特殊情况：一个镜像多个漏洞
+5. 已改造的五个 case
+6. 运行方式
+7. 新增一个 case（SOP）
+8. 已知限制
+
+---
+
 ## 1. 源数据集 WebVulnBench 的情况
 
 WebVulnBench 提供 **10 个 PHP 应用的 Docker 镜像 + 375 个漏洞 PoC 记录**（`pocs.json`）：
@@ -219,15 +232,22 @@ harbor run --path /root/terminal-bench-2/webvuln-rce-hospmgmt-contact \
 > ⚠️ `APT_MIRROR`/`PIP_INDEX_URL`（env.sh 已封装）每次必须带：它们既是加速也是
 > buildkit 层缓存的 cache key，缺了会全量重建并经慢代理超时。
 
-**预构建镜像**（2026-08-11 起推送，组织内免 docker.io 直接可用）：
+**预构建镜像**（已推送私有 registry，组织内免 docker.io 直接可用）：
 
 ```
-registry.h.pjlab.org.cn/ailab-safer2ai-safer2ai_cpu_task/webvuln2tb:main|verifier|webapp-<app>
+registry.h.pjlab.org.cn/ailab-safer2ai-safer2ai_cpu_task/webvuln2tb:<tag>
 ```
 
-`webapp-<app>` = 各任务目标镜像（含构建期 flag 层，5 个 app 各一）；`main` = agent 工作区镜像
-（ubuntu24 + curl + uv/mini-swe-agent，无 docker-cli）；`verifier` = separate verifier 镜像
-（python:3.12-slim + 纯 stdlib grader）。
+| tag | 说明 |
+|---|---|
+| `webapp-<app>` | 各任务目标镜像（含构建期 flag 层，5 个 app 各一） |
+| `phpbench-<app>-v0.1.0` | webapp 底座（WebVulnBench 官方镜像原样镜像，供 `Dockerfile.webapp` 的 `FROM`） |
+| `main` | agent 工作区镜像（ubuntu24 + curl + uv/mini-swe-agent，无 docker-cli） |
+| `verifier` | separate verifier 镜像（python:3.12-slim + 纯 stdlib grader） |
+
+`phpbench-*` 底座镜像是为摆脱 docker.io 依赖镜像进来的；重新生成任务时用
+`convert.py --registry <repo>` 让 `Dockerfile.webapp` 的 `FROM` 指向 registry 而非
+`sheltonshi/webvulnbench`（见 §7）。
 
 ## 7. 新增一个 case（SOP）
 
@@ -235,12 +255,16 @@ registry.h.pjlab.org.cn/ailab-safer2ai-safer2ai_cpu_task/webvuln2tb:main|verifie
 # 1. 选 case: WebVulnBench/PHP/<app>/pocs.json 挑 vuln_id (cmdi 优先; 见 §4.2 抽样判据)
 # 2. 实测定型: docker run 起镜像, 对照源码找 sink 与过滤函数, 写出登录/攻击/exfil 三件套
 # 3. 复制 manifests/webvuln-rce-hospmgmt-contact.toml 改 [task].name / [source] / [weaponize]
-python3 webvuln2tb/convert.py webvuln2tb/manifests/<新名>.toml
+#    （[source].image 保持 sheltonshi 原名，供 convert.py 与 pocs.json 交叉校验）
+python3 webvuln2tb/convert.py webvuln2tb/manifests/<新名>.toml \
+  --registry registry.h.pjlab.org.cn/ailab-safer2ai-safer2ai_cpu_task/webvuln2tb
 # 4. 三向验证: oracle(=1) + 反测(=0) + 真 agent 轨迹审计
 ```
 
 - 转换器**只新增任务目录**，不触碰 `terminal-bench-2` 已有任何文件（`git status` 仅见 untracked）；
 - 与源数据显式绑定：vuln_id / docker_image 与 pocs.json 交叉校验，锚点集合自动推导；
+- `--registry <repo>`：把 `Dockerfile.webapp` 的 `FROM sheltonshi/webvulnbench:phpbench-*` 改写为
+  `<repo>:phpbench-*`（摆脱 docker.io 依赖）；不带则生成 docker.io 名义版（适合公网环境）；
 - `sqli` 类型：在 `templates/` 下加 `sqli/`（结构与 cmdi 同构）后即可按同流程转换；
 - `xss` 类型：需 headless 浏览器模拟受害者，成本最高，建议排最后。
 
