@@ -4,6 +4,10 @@
 >
 > 一句话：把 WebVulnBench 的一个 RCE case（doctorappt 命令注入）转换成了 Harbor/Terminal-Bench 2.0
 > 格式的任务，附带可复用的通用转换器；oracle 满分、作弊零分，均在本机实测通过。
+>
+> **更新（2026-08-18）**：本仓库已扩展到 8 个任务（7 cmdi + 1 SQLi），新增 SQLi 判分管线
+> （flag 进库 + verifier.collect）、`quote_safe`（URL path 注入）、`token_url`（CSRF）等机制，
+> 详见 [README.md](README.md) §3.4 / §5 / §7。本文档保留最初 doctorappt case 的排坑记录不变。
 
 ---
 
