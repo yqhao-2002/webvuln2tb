@@ -202,7 +202,9 @@ curl -sf -c "$JAR" -o /dev/null -X POST --data '{login_data}' '{login_url}'
 
 
 def build_solve_sh(w: dict) -> str:
-    cmd_enc = urllib.parse.quote(w["expose_cmd"], safe="")
+    # quote_safe: 默认 "" 全编码; path 注入的 case (如 wordpress REST route) 需
+    # safe="/" 让斜杠保留 —— URL path 里的 %2F 不会被 WordPress 解码成路径分隔。
+    cmd_enc = urllib.parse.quote(w["expose_cmd"], safe=w.get("quote_safe", ""))
     # {CMD} 可出现在 attack_data (POST 表单) 或 attack_url (GET query, 如 piwigo format 参数)
     attack_data = w["attack_data"].replace("{CMD}", cmd_enc)
     attack_url = w["attack_url"].replace("{CMD}", cmd_enc)
