@@ -180,8 +180,7 @@ for i in $(seq 1 60); do
   sleep 2
 done
 
-{login_block}
-echo '== inject payload & read flag back =='
+{login_block}{token_block}echo '== inject payload & read flag back =='
 # 攻击与读回放在同一重试循环: ①盲注 payload 常回 4xx/5xx (piwigo format 非法回 400)
 # 但 sink 已触发, 攻击只看副作用不看状态码; ②webapp 首页 200 不代表 PHP/DB 已就绪,
 # 首页轮询通过后立即攻击仍可能打在初始化完成前 —— 攻击幂等 (cp 覆盖), 重试无副作用。
@@ -200,6 +199,12 @@ curl -sf -c "$JAR" -o /dev/null -X POST --data '{login_data}' '{login_url}'
 
 """
 
+TOKEN_BLOCK = """echo '== get csrf token =='
+curl -s -b "$JAR" -c "$JAR" '{token_url}' | grep -oE '[0-9a-f]{{32}}' | head -1 > /tmp/.wv_token
+TOKEN=$(cat /tmp/.wv_token)
+
+"""
+
 
 def build_solve_sh(w: dict) -> str:
     # quote_safe: 默认 "" 全编码; path 注入的 case (如 wordpress REST route) 需
@@ -213,12 +218,18 @@ def build_solve_sh(w: dict) -> str:
         if w.get("login_url")
         else ""
     )
+    token_block = (
+        TOKEN_BLOCK.format(token_url=w["token_url"]) if w.get("token_url") else ""
+    )
+    # attack_data 里的 {TOKEN} 替换成 shell 变量 $TOKEN (solve.sh 里 GET 提取的 csrf token)
+    attack_data = attack_data.replace("{TOKEN}", "$TOKEN")
     return SOLVE_SH.format(
         canary=CANARY,
         attack_data=attack_data,
         attack_url=attack_url,
         exfil_url=w["exfil_url"],
         login_block=login_block,
+        token_block=token_block,
     )
 
 
