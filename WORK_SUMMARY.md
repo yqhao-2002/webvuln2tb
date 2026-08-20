@@ -8,6 +8,13 @@
 > **更新（2026-08-18）**：本仓库已扩展到 8 个任务（7 cmdi + 1 SQLi），新增 SQLi 判分管线
 > （flag 进库 + verifier.collect）、`quote_safe`（URL path 注入）、`token_url`（CSRF）等机制，
 > 详见 [README.md](README.md) §3.4 / §5 / §7。本文档保留最初 doctorappt case 的排坑记录不变。
+>
+> **更新（2026-08-20）**：新增 9 个任务（openemr 批次 ×7 + hard cmdi 双子 ×2），共 17 任务
+> （16 cmdi + 1 SQLi，7 应用）。新机制：openemr 证据补丁（插桩只记函数名 → 构建期补成记输入）、
+> openemr/drupal 构建期 DB 导入（官方 start.sh 有 mysqld 未就绪竞态）、`token_extract`
+> （CSRF 提取管道可配）、`auth_hint`（凭据写进指令）、`probe_url`/`probe_data`（证据探针：
+> escapeshellcmd 组合怪执行面无元字符 vs 证据要求元字符的解法）。oracle 9/9=1.0、
+> 作弊反测 9/9=0。详见 README §5.9 / §5.10 / §7。
 
 ---
 
