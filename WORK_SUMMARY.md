@@ -5,6 +5,16 @@
 > 一句话：把 WebVulnBench 的一个 RCE case（doctorappt 命令注入）转换成了 Harbor/Terminal-Bench 2.0
 > 格式的任务，附带可复用的通用转换器；oracle 满分、作弊零分，均在本机实测通过。
 >
+> **更新（2026-08-20 之三）**：XSS victim 侧车架构落地并批量化：agent 环境三容器，victim
+> 常驻 headless firefox 持 secret cookie，agent 自起 listener 收 beacon；verifier 回归纯
+> stdlib artifacts 三断言。共 22 任务（19 cmdi + 1 SQLi + **2 XSS**：miscaction + 
+> memberaction，后者零模板改动直接复用）。双任务 oracle harbor run = 1.0、作弊反测 = 0。
+> 关键实测：harbor separate verifier 环境**不带任务服务**（extra_docker_compose 被清空）；
+> 反射入口必须 text/html（JSON view + CSP 会毙掉执行）；未引号事件处理器在首个空格截断；
+> **xss 证据检查终版 = liveness（任意插桩记录含标记），不按函数白名单**——memberlist GET
+> 反射可真实打穿 beacon 但 sink 只接 POST 插桩，白名单必误杀替代路径满分（实测复现并
+> 修复：旧白名单 0 → 新语义 1），误报方向由 victim secret 真值强门封死。详见 README §5.12。
+>
 > **更新（2026-08-18）**：本仓库已扩展到 8 个任务（7 cmdi + 1 SQLi），新增 SQLi 判分管线
 > （flag 进库 + verifier.collect）、`quote_safe`（URL path 注入）、`token_url`（CSRF）等机制，
 > 详见 [README.md](README.md) §3.4 / §5 / §7。本文档保留最初 doctorappt case 的排坑记录不变。
