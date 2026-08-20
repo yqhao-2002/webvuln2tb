@@ -9,7 +9,15 @@
 > （flag 进库 + verifier.collect）、`quote_safe`（URL path 注入）、`token_url`（CSRF）等机制，
 > 详见 [README.md](README.md) §3.4 / §5 / §7。本文档保留最初 doctorappt case 的排坑记录不变。
 >
-> **更新（2026-08-20）**：新增 9 个任务（openemr 批次 ×7 + hard cmdi 双子 ×2），共 17 任务
+> **更新（2026-08-20 之二）**：新增 3 个任务（makeSecurePath 家族复活：mybb-memberlist /
+> mybb-getusers / hospmgmt-adminremark），共 20 任务（19 cmdi + 1 SQLi，8 应用）。核心手法：
+> 过滤器删全部常规元字符但**不删换行、不转义空格** → 换行做命令分隔 + 空格直用，
+> 证据走 `;id` 探针两步（插桩记过滤前输入）。同期修复 solve.sh 模板：登录挪进重试循环
+> （hospmgmt 官方 start.sh 有 mysqld 竞态，一次性登录会被 DB 未就绪静默否掉）。
+> 另完成 7 应用伪证据全量爬测 + openemr 白名单定稿（全集减 2 污染源）。
+> 详见 README §4.1 / §5.11。
+>
+> **更新（2026-08-20 之一）**：新增 9 个任务（openemr 批次 ×7 + hard cmdi 双子 ×2），共 17 任务
 > （16 cmdi + 1 SQLi，7 应用）。新机制：openemr 证据补丁（插桩只记函数名 → 构建期补成记输入）、
 > openemr/drupal 构建期 DB 导入（官方 start.sh 有 mysqld 未就绪竞态）、`token_extract`
 > （CSRF 提取管道可配）、`auth_hint`（凭据写进指令）、`probe_url`/`probe_data`（证据探针：

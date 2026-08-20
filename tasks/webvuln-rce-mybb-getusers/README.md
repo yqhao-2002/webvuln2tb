@@ -1,0 +1,7 @@
+# webvuln-rce-mybb-getusers
+
+由 webvuln2tb 自动生成, 请勿手改文件本体; 改动请走 webvuln2tb/manifests/webvuln-rce-mybb-getusers.toml + templates/ 后重新生成。
+
+- 源: SheltonShi/WebVulnBench `PHP/mybb/pocs.json` `vuln_function_376d80` (cmdi)
+- 镜像: `sheltonshi/webvulnbench:phpbench-mybb-v0.1.0`
+- 架构: webapp (漏洞应用, 独立容器) + main (agent/verifier), 黑盒 HTTP 交互
