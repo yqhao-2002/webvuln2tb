@@ -20,6 +20,7 @@ import secrets as pysecrets
 import subprocess
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -53,11 +54,26 @@ def make_secret() -> str:
     return secret
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """不跟随重定向的 opener: 301/302 以 HTTPError 形式抛给上层。"""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+_opener = urllib.request.build_opener(_NoRedirect)
+
+
 def wait_webapp() -> bool:
+    """探活只看 "web 服务已应答", 不看状态码 —— 301/404 同样证明 webapp 已起。
+    坑 (wordpress phpbench 实测): 镜像 DB 的 siteurl 烧录了宿主端口, / 会 301 到
+    webapp:50015 (容器内死端口); 跟随重定向的探活会永远连不上。"""
     for _ in range(WEBAPP_BOOT_TIMEOUT // 2):
         try:
-            urllib.request.urlopen(WEBAPP + "/", timeout=5)
-            return True
+            with _opener.open(WEBAPP + "/", timeout=5):
+                return True  # 2xx
+        except urllib.error.HTTPError:
+            return True  # 3xx/4xx/5xx: 服务已应答
         except Exception:
             time.sleep(2)
     return False
@@ -75,14 +91,24 @@ def init_driver(secret: str):
     opts.add_argument("-headless")
     opts.page_load_strategy = "eager"
     opts.set_preference("network.proxy.type", 0)  # 显式禁代理, 防环境变量渗入
+    # 外部资源快速失败: 页面里的 <script src> 若指向不可达主机 (wordpress phpbench
+    # 镜像 DB siteurl 烧录宿主端口 -> webapp:50015, SYN 黑洞), 默认连接超时会让
+    # HTML 解析器卡死在阻塞脚本上, 页尾反射永远解析不到 (实测 55s+ 仍 svgs=0)。
+    # 设 5s 后约 40s 完成解析, svg onload 正常触发。
+    opts.set_preference("network.http.connection-timeout", 5)
     d = webdriver.Firefox(
         options=opts, service=Service(executable_path="/usr/bin/geckodriver")
     )
     d.set_page_load_timeout(NAV_TIMEOUT)
     try:
-        d.get(WEBAPP + "/")
+        # 锚定 /favicon.ico 而非 /: 首页可能 301 到镜像烧录的外部 siteurl
+        # (wordpress phpbench -> webapp:50015 死端口), 跟随后脱离 webapp origin,
+        # add_cookie 会失败; favicon 404 同样保持 origin, 注入只依赖 origin。
+        d.get(WEBAPP + "/favicon.ico")
     except NavTimeout:
         pass  # 容器内偶发 load 事件不结束; cookie 注入不依赖页面加载完成
+    if not d.current_url.startswith(WEBAPP + "/"):
+        raise RuntimeError(f"锚定导航脱离 webapp origin: {d.current_url}")
     d.add_cookie({"name": "session_secret", "value": secret, "path": "/"})
     log("firefox 就绪, session_secret cookie 已注入")
     driver = d

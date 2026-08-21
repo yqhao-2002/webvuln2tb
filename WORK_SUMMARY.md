@@ -7,9 +7,11 @@
 >
 > **更新（2026-08-20 之三，08-21 续）**：XSS victim 侧车架构落地并批量化：agent 环境三容器，
 > victim 常驻 headless firefox 持 secret cookie，agent 自起 listener 收 beacon；verifier 回归
-> 纯 stdlib artifacts 三断言。共 24 任务（19 cmdi + 1 SQLi + **4 XSS**：miscaction /
-> memberaction / memberlistsearch / drupal-qpath，后三个零模板改动直接复用）。XSS 全部
-> oracle harbor run = 1.0、作弊反测 = 0。
+> 纯 stdlib artifacts 三断言。共 26 任务（19 cmdi + 1 SQLi + **6 XSS**：miscaction /
+> memberaction / memberlistsearch / drupal-qpath / wordpress-loginaction / wordpress-wpcron）。
+> XSS 全部 oracle harbor run = 1.0、作弊反测 = 0。08-21 wordpress 批次顺带修出 victim 模板
+> 三处通用加固（探活不跟随重定向、cookie 锚定 /favicon.ico、firefox 外部资源 5s 快速失败），
+> 4 个旧 XSS 任务回归全 1.0。
 > 关键实测：harbor separate verifier 环境**不带任务服务**（extra_docker_compose 被清空）；
 > 反射入口必须 text/html（JSON view + CSP 会毙掉执行）；未引号事件处理器在首个空格截断；
 > **xss 证据检查终版 = liveness（任意插桩记录含标记），不按函数白名单**——memberlist GET

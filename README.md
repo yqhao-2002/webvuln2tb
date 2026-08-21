@@ -2,7 +2,7 @@
 
 > 一句话：把 [SheltonShi/WebVulnBench](https://github.com/SheltonShi/WebVulnBench) 的 PHP 漏洞 case
 > 转换成带**可靠评分机制**的 Harbor/Terminal-Bench 2.0 任务，并配套可复用的转换管线。
-> 状态：已交付 24 个任务（9 个应用），含 19 个 cmdi + 1 个 SQLi + 4 个 XSS（§5.12）；
+> 状态：已交付 26 个任务（9 个应用），含 19 个 cmdi + 1 个 SQLi + 6 个 XSS（§5.12）；
 > oracle / 作弊反测双向验证 + 爬测伪证据检查（前 8 个另有真实 agent glm-5.2 验证）。
 
 ---
@@ -177,7 +177,7 @@ piwigo sink 记 format 参数原值、doctorappt sqli sink 记**用户原始输�
 case——能则重复"。推荐按「应用 × 类型 × 认证要求 × 过滤严格度 × sink 形态」分层抽样，
 45 个 cmdi 精选约 10-15 个即可拉开覆盖面。
 
-## 5. 已改造的 case（24 个）
+## 5. 已改造的 case（26 个）
 
 ### 5.1 `webvuln-rce-doctorappt-profile`
 
@@ -355,7 +355,7 @@ URL path ×1 / 登录页 ×1）。
 - drupal `f7692c`（bootstrap.inc）`preg_replace('/[`;&|]/','',$param)` **直接过滤反引号**，绕不过；
 - drupal 3 个 SQLi（656336/1b39b8/fba7aa）插桩 sink 均为 `$con->query` 不回显，**盲注**（暂不排）。
 
-### 5.12 XSS：victim 侧车架构（2026-08-20/21 新增，4 个）
+### 5.12 XSS：victim 侧车架构（2026-08-20/21 新增，6 个）
 
 XSS 与 cmdi/sqli 的本质差异：**成功 = "JS 在受害者浏览器里执行"**，静态取证（flag 文件 +
 插桩日志）只能证明"输入到达 sink"，不能证明"脚本活了"。首个原型 `webvuln-xss-mybb-miscaction`
@@ -429,6 +429,20 @@ victim** 架构补上执行验证；第二个 `webvuln-xss-mybb-memberaction`（
    **坑**：payload 带 `">` 前缀反而使反射消失（引号改变路由渲染路径），必须裸
    `<svg onload="...">` 无逃逸前缀。q 家族 8 个同形函数，锚 10792d；harbor oracle = 1.0
    （2m36s），假 flag / 真 secret 无证据反测全 0。
+
+9. **wordpress 双子（2026-08-21，`webvuln-xss-wordpress-loginaction` / `webvuln-xss-wordpress-wpcron`）**：
+   wp-login.php `action` / wp-cron.php `doing_wp_cron` 免登 GET 页尾裸反射，标记落锚点函数
+   自己名下（c7ee2c / 6863d2，liveness 证据天然成立）。wp-cron 响应体几乎只有反射本身
+   （无外部资源），t+0.4s 即触发 beacon；wp-login 页面带 6 个指向死主机的外部 script。
+   双任务 harbor oracle = 1.0；作弊反测 假 flag / 真 secret 无证据 全 0。
+10. **phpbench 镜像 DB siteurl 烧录宿主端口（wordpress 实测三连坑，victim 模板已通用加固）**：
+   ① `/` 301 → `webapp:50015`（容器内死端口，SYN 黑洞）→ 探活跟随重定向永远失败
+   （wait_webapp 改为不跟随 + 任意 HTTP 状态码即就绪）；② init_driver 导航 `/` 跟随重定向
+   脱离 webapp origin → add_cookie 失败（锚定改 `/favicon.ico`，404 同样保持 origin）；
+   ③ 页面 `<script src="http://<死主机>/...">` 的默认连接超时把 HTML 解析器卡死在阻塞
+   脚本上，页尾反射永远解析不到（实测 55s+ svgs=0）→ firefox
+   `network.http.connection-timeout=5` 快速失败后 ~40s 解析完成、beacon 正常触发
+   （对照实测：默认配置 beacon 静默）。三项加固回归 4 个旧 XSS 任务 oracle 全 1.0。
 
 ## 6. 运行方式
 
