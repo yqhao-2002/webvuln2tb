@@ -5,6 +5,19 @@
 > 一句话：把 WebVulnBench 的一个 RCE case（doctorappt 命令注入）转换成了 Harbor/Terminal-Bench 2.0
 > 格式的任务，附带可复用的通用转换器；oracle 满分、作弊零分，均在本机实测通过。
 >
+> **更新（2026-08-21 之四，SQLi 布尔盲注 + SQLi 池收官）**：第 28 个任务
+> `webvuln-sqli-hospmgmt-forgotpwd`（hospmgmt forgot-password 免登录布尔盲注）。
+> convert.py 新增 `extract = "boolean"` 分支（solve.sh 生成器：门问询等 flag 表 seed →
+> `ASCII(SUBSTRING(...))>n` 数值二分 + 每位等值复核 → 外层×5 重试）。关键坑：**LOCATE/`=` 字符串
+> 比较在 CI collation 下大小写漂移**（实测 `deadbeef` 提成 `deAdbeeF`），必须 ASCII() 数值比较。
+> 验证：调研容器端到端精确提取 → harbor oracle 一次过 1.0 → 反测 A/C=0、正控 D=1。
+> 同日 SQLi 池收官判词：doctorappt 剩余 3 个 sqli poc（4b561e/e61fb6 patient profile +
+> 75fdad doctor profile）同形收敛为「登录后 UPDATE 二阶回显」（末列注入逃逸 SET 子句把
+> flag 写进前面列、重载读回，实测可行）——但**不立项**：插桩 sqli wrapper 查询结果被丢弃
+> （无 oracle）、真正过 payload 的字段挂 XSS wrapper 下（证据锚点与利用路径错位 → 最小化
+> 合法解漏证据）、注册功能 strict mode 下坏掉、与已交付 rce-doctorappt-profile 同入口。
+> SQLi 定格 2 个（union 回显 + 布尔盲注），形状覆盖完整。详见 README §3.4 / §5.13。
+>
 > **更新（2026-08-20 之三，08-21 续）**：XSS victim 侧车架构落地并批量化：agent 环境三容器，
 > victim 常驻 headless firefox 持 secret cookie，agent 自起 listener 收 beacon；verifier 回归
 > 纯 stdlib artifacts 三断言。共 27 任务（19 cmdi + 1 SQLi + **7 XSS**：miscaction /
