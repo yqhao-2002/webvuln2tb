@@ -5,6 +5,12 @@
 > 一句话：把 WebVulnBench 的一个 RCE case（doctorappt 命令注入）转换成了 Harbor/Terminal-Bench 2.0
 > 格式的任务，附带可复用的通用转换器；oracle 满分、作弊零分，均在本机实测通过。
 >
+> **更新（2026-08-22，全池收官）**：剩余候选逐条核毙（README §5.13 末段）：drupal 3 sqli
+> 时间差 oracle 不可控（17 sink 扇出 + 无 LIMIT 全表扫 SLEEP(1)>120s + watchdog 随攻击增长）；
+> openemr 13 sqli wrapper 调未定义 `get_my_db_connection()` Fatal、查询不执行；hospmgmt
+> change-emaild XSS 双重死（check_login + POST-only）；openemr 62 auth-gated XSS 不做
+> victim 会话扩展；cmdi 尾巴 6 个关闭。三池（cmdi/sqli/xss）全部收官，定格 28 任务。
+>
 > **更新（2026-08-21 之四，SQLi 布尔盲注 + SQLi 池收官）**：第 28 个任务
 > `webvuln-sqli-hospmgmt-forgotpwd`（hospmgmt forgot-password 免登录布尔盲注）。
 > convert.py 新增 `extract = "boolean"` 分支（solve.sh 生成器：门问询等 flag 表 seed →

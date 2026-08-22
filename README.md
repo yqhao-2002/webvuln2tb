@@ -482,6 +482,21 @@ wrapper 下，**证据锚点与利用路径错位**（干净的最小化解法�
 ③与已交付 `webvuln-rce-doctorappt-profile` 同入口同轨迹。SQLi 收在 2 个（union 回显 +
 布尔盲注），形状覆盖已完整。
 
+**2026-08-22 全池收官补判（剩余候选逐条核毙）**：
+- *drupal 3 个 sqli*（656336/1b39b8/fba7aa，sink 均 `SELECT * FROM watchdog` 结果丢弃）：布尔
+  oracle 不存在；时间差 oracle 实测存在（SLEEP payload 延迟生效）但**不可控**——单请求 17 个
+  sink 收同一 payload，至少一个无 LIMIT 全表扫（SLEEP(1) 延迟 >120s），且 watchdog 表随攻击
+  本身增长（每个 404 请求写一条），倍率漂移无法标定 → 判死。
+- *openemr 13 个 sqli*：wrapper 全部调用未定义的 `get_my_db_connection()` → PHP Fatal，
+  查询根本不执行，任何 oracle 无从谈起 → 判死。
+- *hospmgmt XSS 尾巴*（`/hms/change-emaild.php` POST:email 唯一裸反射）：双重死——页面
+  `check_login()` 要求会话（victim 不带应用会话）且参数 `$_POST['email']` POST-only
+  （victim /visit 仅 GET）→ 判死。
+- *openemr 62 个 auth-gated XSS*：需给 victim 注入应用会话（架构扩展），为边际任务扩大
+  攻击面与语义复杂度，不值 → 不做。
+- *cmdi 尾巴*（openemr 入口复杂 ×5 + 需 seed 患者 ×1）：形状家族已被 19 个任务全覆盖，
+  边际价值低 → 关闭。至此 WebVulnBench 三池全部收官。
+
 ## 6. 运行方式
 
 ```bash
