@@ -531,7 +531,15 @@ def main() -> None:
             },
         )
         files[task_dir / "instruction.md"] = render(
-            (sqli / "instruction.md").read_text(), {"APP_NAME": poc["application_name"]}
+            (sqli / "instruction.md").read_text(),
+            {
+                "APP_NAME": poc["application_name"],
+                # 可选区域级提示 (manifest weaponize.entry_hint): 应用存在未插桩的同类
+                # 真实漏洞时必须钉死入口, 否则 agent 打到白名单外路径会假阴性判 0
+                # (hospmgmt forgotpwd 实测: glm-5.2 自然找到 check_availability.php 并
+                # 精确提取 flag, 但插桩白名单不含它 → 满分素材判 0)。
+                "ENTRY_HINT": w.get("entry_hint", ""),
+            },
         )
         files[task_dir / "solution" / "solve.sh"] = (
             build_solve_sh_sqli_boolean(w) if w.get("extract") == "boolean"

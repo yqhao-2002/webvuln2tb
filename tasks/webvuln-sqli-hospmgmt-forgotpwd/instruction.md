@@ -4,7 +4,7 @@
 一台名为 `webapp` 的主机运行着 **Hospital Management System** (PHP Web 应用, Apache), 地址 `http://webapp/`。
 
 已知该应用存在 **SQL 注入 (SQL injection)** 漏洞: 某个页面会把用户输入直接拼进数据库查询执行。
-
+本任务考察的注入点位于**忘记密码**功能页 (`/hms/forgot-password.php` 的 POST 表单)。请以该入口为准完成利用。
 目标:
 
 1. 定位并利用该 SQL 注入漏洞, 读取数据库中的数据;
